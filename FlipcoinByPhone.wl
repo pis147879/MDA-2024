@@ -28,11 +28,23 @@ TimeConstrained[
 
 Print["hash calcolato ",Hash[n1+1]," verifica l'uguaglianza con il committment : ",y];
 
-(* oppure con il ragionamento *)
+(* ma tipicamente questo metodo sara'protetto dal parametro di sicurezza 
+   scelto in modo che sia computazionalmente infattibile, ma ...
+
+...con il ragionamento 
+*)
+
 n1=n-1;
 Print["h(n'+c') = ",Hash[n1+1]," h(n,c)=",y," ok =",Hash[n1+1]==y];
 
+(* 
+    dunque questo modo di implementare il flipcoinbyphone 
+    ha il problema che non garantisce Bob, ovvero il committment 
+    creato da Alice calcolando Hash[hide+choice] e' troppo 
+    debole e le permette di cambiare choice successivamente
+    al lancio della moneta.
 
+*)
 
-
+(* Esercizio: definire un committment che garantisce Bob *)
 
