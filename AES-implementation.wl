@@ -46,10 +46,10 @@ g[byte_] := Module[{A,b},
 ginverse[byte_] := Module[{A,b},
         (
             A = Table[RotateRight[IntegerDigits[FromDigits["8F", 16], 2, 8], i], {i, 0, 7}];
-            Ainv =InverseMatrix[A,Modulus->2];
+            Ainv =Inverse[A,Modulus->2];
             b = IntegerDigits[FromDigits["C6", 16], 2, 8];
 
-            FromDigits[Ainv . Mod[ IntegerDigits[byte, 2, 8] + b, 2], 2]
+            FromDigits[Mod[Ainv . Mod[ IntegerDigits[byte, 2, 8] + b, 2],2], 2]
         )
 ];
 
@@ -64,24 +64,23 @@ InverseSubBytes[state_] := Map[SRDINV, state, {2}];
 ShiftRows[state_] := MapThread[RotateLeft, {state, {0, 1, 2, 3}}];
 InverseShiftRows[state_] := MapThread[RotateRight, {state, {0, 1, 2, 3}}];
 
-MCMatrix = Table[
-  			RotateRight[ { 2, 3, 1 ,1 }  , i], {i, 0, 3}]
-
-InverseMCMatrix = Table[
-  			RotateRight[ { 14, 11, 13 ,9 }  , i], {i, 0, 3}]
+MCMatrix = Table[RotateRight[ { 2, 3, 1 ,1 }  , i], {i, 0, 3}];
+InverseMCMatrix = Table[RotateRight[ { 14, 11, 13 ,9 }  , i], {i, 0, 3}];
 
 AuxMixColumns[state_,matrix_] := Module[{columns},
    	columns = Transpose[state];
-  	Map[
-             Inner[FieldTimes  , matrix, #, FieldPlus] &,
-   	columns]
+
+    Transpose@Map[Inner[FieldTimes  , matrix, #, FieldPlus] &, columns]
   ];
 
 MixColumns[state_]:=AuxMixColumns[state,MCMatrix];
 InverseMixColumns[state_]:=AuxMixColumns[state,InverseMCMatrix];
 
+(* Add RoundKey*)
+AddKey[state_,rk_]:=FieldPlus[state,rk];
 
 AESRound[state_, rk_] := AddKey[MixColumns@ShiftRows@SubBytes@state, rk];
+AESRoundInverse[state_, rk_] := InverseSubBytes@InverseShiftRows@InverseMixColumns@AddKey[ state, rk];
 
 (* ... to be continued *)
 Nk = 4 ;
@@ -99,17 +98,13 @@ UpdateKeySchedule[state_] := Append[state,
 
 AESKeySchedule[key_, rounds_] := 
  AESKeySchedule[key, rounds] = Module[{state0, steps, tmpks},
-   state0 = 
-    Partition[IntegerDigits[FromDigits[key, 16], 256, 16], 4];
+   state0 = Partition[IntegerDigits[FromDigits[key, 16], 256, 16], 4];
    
    steps = 4 (rounds + 1) - Nk;
    tmpks = Nest[UpdateKeySchedule, state0, steps];
    Map[Transpose, Partition[tmpks, 4]]
    ];
 
-AESEncryption[state_, key_] := Fold[AESRound, state, AESKeyschedule[key, 10]];
-
-AESRoundInverso[state_, rk_] := InverseSubBytes@InverseShiftRows@InverseMixColumns@AddKey[ state, rk];
-
-AESEncryption[state_, key_] := Fold[AESRoundInverse, state, Reverse@AESKeyschedule[key, 10]];
+AESEncryption[key_,state_] := Fold[AESRound, state, AESKeySchedule[key, 10]];
+AESDecryption[key_,state_] := Fold[AESRoundInverse, state, Reverse@AESKeySchedule[key, 10]];
 
